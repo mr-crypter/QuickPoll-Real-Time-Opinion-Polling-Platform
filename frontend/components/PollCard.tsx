@@ -22,7 +22,8 @@ export function PollCard({ poll, onVote, onLike, onViewDetails }: PollCardProps)
   }
 
   const handleLike = () => {
-    setIsLiked(!isLiked)
+    const newLikedState = !isLiked
+    setIsLiked(newLikedState)
     onLike(poll.id)
   }
 

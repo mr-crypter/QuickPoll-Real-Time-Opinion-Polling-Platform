@@ -40,9 +40,18 @@ export default function Home() {
   })
 
   const likeMutation = useMutation({
-    mutationFn: (pollId: string) => api.likePoll(pollId),
-    onSuccess: () => {
+    mutationFn: (pollId: string) => api.likePoll(pollId, "toggle"),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['polls'] })
+      // Update the specific poll's like count in cache
+      queryClient.setQueryData(['polls'], (oldData: any) => {
+        if (!oldData) return oldData
+        return oldData.map((poll: any) => 
+          poll.id === data.poll_id 
+            ? { ...poll, likes: data.likes }
+            : poll
+        )
+      })
     },
   })
 

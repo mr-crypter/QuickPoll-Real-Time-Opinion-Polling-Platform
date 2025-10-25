@@ -32,8 +32,8 @@ export const apiClient = {
     return response.data
   },
 
-  likePoll: async (pollId: string): Promise<any> => {
-    const response = await api.post(`/polls/${pollId}/like`, {})
+  likePoll: async (pollId: string, action: string = "toggle"): Promise<any> => {
+    const response = await api.post(`/polls/${pollId}/like`, { action })
     return response.data
   },
 }

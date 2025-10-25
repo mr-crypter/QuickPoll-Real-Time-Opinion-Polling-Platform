@@ -116,6 +116,7 @@ class VoteRequest(BaseModel):
 
 class LikeRequest(BaseModel):
     user_id: Optional[str] = None
+    action: str = "toggle"  # "like" or "unlike" or "toggle"
 
 # Helper function to convert ObjectId to string
 def poll_serializer(poll) -> dict:
@@ -276,33 +277,67 @@ async def vote_poll(poll_id: str, vote_data: VoteRequest):
 
 @app.post("/polls/{poll_id}/like")
 async def like_poll(poll_id: str, like_data: LikeRequest):
-    """Like/unlike a poll"""
+    """Like/unlike a poll with proper toggle functionality"""
     poll = await db.polls.find_one({"_id": poll_id})
     if not poll:
         raise HTTPException(status_code=404, detail="Poll not found")
     
-    # For simplicity, we'll just increment likes
-    # In a real app, you'd track which users liked which polls
-    new_likes = poll["likes"] + 1
+    # Get user identifier (use IP or user_id)
+    user_identifier = like_data.user_id or "anonymous"
     
+    # Check if user has already liked this poll
+    liked_users = poll.get("liked_users", [])
+    is_liked = user_identifier in liked_users
+    
+    if like_data.action == "toggle":
+        if is_liked:
+            # Unlike: remove user from liked_users and decrement likes
+            liked_users.remove(user_identifier)
+            new_likes = poll["likes"] - 1
+            action_taken = "unliked"
+        else:
+            # Like: add user to liked_users and increment likes
+            liked_users.append(user_identifier)
+            new_likes = poll["likes"] + 1
+            action_taken = "liked"
+    elif like_data.action == "like" and not is_liked:
+        liked_users.append(user_identifier)
+        new_likes = poll["likes"] + 1
+        action_taken = "liked"
+    elif like_data.action == "unlike" and is_liked:
+        liked_users.remove(user_identifier)
+        new_likes = poll["likes"] - 1
+        action_taken = "unliked"
+    else:
+        # No change needed
+        new_likes = poll["likes"]
+        action_taken = "no_change"
+    
+    # Update poll in database
     await db.polls.update_one(
         {"_id": poll_id},
-        {"$set": {"likes": new_likes}}
+        {"$set": {"likes": new_likes, "liked_users": liked_users}}
     )
     
     # Broadcast update to all clients watching this poll and general channel
     await manager.broadcast_to_poll(poll_id, {
         "type": "like_update",
         "poll_id": poll_id,
-        "likes": new_likes
+        "likes": new_likes,
+        "action": action_taken
     })
     await manager.broadcast_to_poll("general", {
         "type": "like_update",
         "poll_id": poll_id,
-        "likes": new_likes
+        "likes": new_likes,
+        "action": action_taken
     })
     
-    return {"message": "Poll liked successfully", "likes": new_likes}
+    return {
+        "message": f"Poll {action_taken} successfully", 
+        "likes": new_likes,
+        "is_liked": not is_liked if like_data.action == "toggle" else is_liked
+    }
 
 # WebSocket endpoint for general updates
 @app.websocket("/ws/general")

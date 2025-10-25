@@ -23,7 +23,8 @@ export function PollDetailModal({ poll, onClose, onVote, onLike }: PollDetailMod
   }
 
   const handleLike = () => {
-    setIsLiked(!isLiked)
+    const newLikedState = !isLiked
+    setIsLiked(newLikedState)
     onLike(poll.id)
   }
 
