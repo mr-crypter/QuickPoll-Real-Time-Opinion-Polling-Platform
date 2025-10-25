@@ -17,12 +17,17 @@ load_dotenv()
 
 app = FastAPI(title="QuickPoll API", version="1.0.0")
 
-# CORS middleware
+# CORS middleware - Updated for production deployment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "https://quickpoll-frontend.vercel.app",  # Vercel frontend URL
+        "https://*.vercel.app",  # All Vercel preview deployments
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
